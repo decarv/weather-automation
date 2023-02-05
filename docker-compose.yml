@@ -1,0 +1,33 @@
+version: '3.3'
+volumes:
+  data:
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgrespw
+    ports:
+      - 5432:5432
+    volumes:
+      - data:/var/lib/postgresql
+  scrapper:
+    build:
+      dockerfile: ./scrapper/Dockerfile
+    # env_file: .env
+    environment:
+      CITY: SAO PAULO
+      DB_CONNECTION_STRING: postgres://postgres:postgrespw@postgres:5432
+      SERVICE: weather.com
+      POSTGRES_PASSWORD: postgrespw
+    depends_on:
+      - postgres
+  monitor:
+    build:
+      dockerfile: ./monitor/Dockerfile
+    environment:
+      DB_CONNECTION_STRING: postgres://postgres:postgrespw@postgres:5432
+      POSTGRES_PASSWORD: postgrespw
+    depends_on:
+      - postgres
+
