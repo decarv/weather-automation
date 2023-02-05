@@ -20,7 +20,7 @@ class WeatherMonitor():
                             ORDER BY date"""
 
     # arguments: (most_recent_emailed_date)
-    UPDATE_EMAILED_INSTANCES = "UPDATE weather SET emailed = TRUE WHERE date = %s"
+    UPDATE_EMAILED_INSTANCES = "UPDATE weather SET emailed = true WHERE date = %s"
     
     def __init__(self, **kwargs):
 
@@ -28,7 +28,7 @@ class WeatherMonitor():
             level=logging.INFO, format=f'[{__class__.__name__}: %(asctime)s] %(message)s'
         )
 
-        self.DEFAULT_FALLBACK_DATE = datetime.datetime(2021,12,1)
+        self.DEFAULT_FALLBACK_DATE = datetime.datetime(2022,1,1)
 
         # TODO: create input validation
         self.temperature_min = kwargs["temperature_min"]
@@ -36,10 +36,12 @@ class WeatherMonitor():
         self.precipitation_probability_min = kwargs["precipitation_probability_min"]
         
         self.smtp_server = kwargs["smtp_server"]
+        self.smtp_server_port = kwargs["smtp_server_port"]
         self.sender_email = kwargs["sender_email"]
         self.email_password = kwargs["email_password"]
         self.receiver_email = kwargs["receiver_email"]
         self.connection_string = kwargs["db_connection_string"]
+        self.email_subject = "Monitoramento Tempo"
 
         self.conn, self.cursor = utils.db_connect(self.connection_string)
 
@@ -49,15 +51,19 @@ class WeatherMonitor():
             self.most_recent_emailed_date = self.DEFAULT_FALLBACK_DATE
         self.unemailed_instances = None
         self.db_get_unemailed_instances_since_most_recent_emailed_date()
-        self.email_create_body()
 
+        self.email_create_body()
         self.email_send()
-        self.db_update_emailed_instances()
+
+        if self.unemailed_instances is not None:
+            self.db_update_emailed_instances()
 
     def db_get_most_recent_emailed_instance_date(self):
         try:
             self.cursor.execute(self.MOST_RECENT_EMAILED_DATE_QUERY)
             self.most_recent_emailed_date = self.cursor.fetchone()
+            if self.most_recent_emailed_date is not None:
+                self.most_recent_emailed_date = self.most_recent_emailed_date[0]
             self.conn.commit()
         except psycopg2.OperationalError:
             self.conn, self.cursor = utils.db_connect(self.connection_string)
@@ -84,14 +90,15 @@ class WeatherMonitor():
 
     def db_update_emailed_instances(self):
         self.emailed_instances = self.unemailed_instances
-        latest_emailed_date = self.emailed_instances[-1][0] # get lastest emailed date
+        if len(self.emailed_instances) <= 0:
+            return
 
-        # update everything from most_recent_emailed_date to TIMESTAMP(TODAY()-1)
-        start_date = utils.timestamp_to_datetime(self.most_recent_emailed_date)
-        end_date = utils.timestamp_to_datetime(latest_emailed_date)
+        latest_emailed_date = self.emailed_instances[-1][0] # get lastest emailed date
+        start_date = self.most_recent_emailed_date
+        end_date = latest_emailed_date
         while start_date <= end_date:
             try:
-                arg = utils.datetime_to_timestamp(start_date)
+                arg = (utils.datetime_to_timestamp(start_date),)
                 self.cursor.execute(self.UPDATE_EMAILED_INSTANCES, arg)
                 self.conn.commit()
                 start_date += datetime.timedelta(1, 0, 0)
@@ -102,16 +109,19 @@ class WeatherMonitor():
                 exit(1) # TODO: problem to exit here?
 
     def email_create_body(self):
-        self.email_body = "Lista dos dias em que a temperatura esteve acima de {} C e abaixo de {} C OU em que a probabilidade de chuva esteve acima de {}:\n".format(self.temperature_min, self.temperature_max, self.precipitation_probability_min)
+        self.email_body = "From: {}\r\nTo: {}\r\nSubject: {}\r\n\r\n".format(self.sender_email, self.receiver_email, self.email_subject)
+        self.email_body += "Lista dos dias em que a temperatura esteve acima de {} C e abaixo de {} C OU em que a probabilidade de chuva esteve acima de {}:\n".format(self.temperature_min, self.temperature_max, self.precipitation_probability_min)
 
-        for instance in self.unemailed_instances:
-            date, temp_mean, prec_prob, is_emailed = instance
-            self.email_body += "{} - {}C {}%\n".format(date, temp_mean, prec_prob)
+        if self.unemailed_instances is not None and len(self.unemailed_instances) > 0:
+            for instance in self.unemailed_instances:
+                date, temp_mean, prec_prob, _ = instance
+                self.email_body += "{} - {} C {}%\n".format(date, temp_mean, prec_prob)
+        else:
+            self.email_body += "Nao ha resultados"
 
     def email_send(self):
-       PORT = 465
-       context = ssl.create_default_context()
-       with smtplib.SMTP_SSL(self.smtp_server, PORT, context=ssl.create_default_context()) as server:
+       with smtplib.SMTP(self.smtp_server, self.smtp_server_port) as server:
+           server.starttls()
            server.login(self.sender_email, self.email_password)
            server.sendmail(self.sender_email, self.receiver_email, self.email_body)
 
@@ -121,11 +131,12 @@ if __name__ == '__main__':
         temperature_min=15,
         temperature_max=40,
         precipitation_probability_min=50,
-        sender_email="weather.monitor.test@gmail.com",
+        sender_email="weather.monitor@outlook.com",
         receiver_email="decarv.henrique@gmail.com",
-        email_password="weather.monitor.T3ST",
+        email_password="weather.M0N1T0R",
         db_connection_string="postgres://postgres:postgrespw@localhost:32769",
-        smtp_server="smtp.gmail.com",
+        smtp_server="smtp-mail.outlook.com",
+        smtp_server_port=587,
         # temperature_min=os.getenv("TEMPERATURE_MIN"),
         # temperature_max=os.getenv("TEMPERATURE_MAX"),
         # precipitation_probability_min=os.getenv("PRECIPITATION_PROBABILITY_MIN"),
