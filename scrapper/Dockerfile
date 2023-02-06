@@ -1,7 +1,8 @@
-FROM python:3.9
+FROM ubuntu:latest
 
-WORKDIR /monitor
+WORKDIR /scrapper
 
+# Install python/pip
 RUN apt update
 RUN apt upgrade
 RUN apt -y install cron
@@ -15,15 +16,15 @@ ENV PYTHONUNBUFFERED=1
 # Copy files
 COPY . .
 COPY .. .
-COPY monitorjob /etc/cron.d/monitorjob
+COPY cronjob /etc/cron.d/cronjob
 RUN touch /var/log/cron.log
 
 # install any Python requirements used by the jobs
 # RUN pip3 install --no-cache-dir -r requirements.txt
 RUN pip3 install requirements.txt
 
-RUN chmod +x /monitor/monitor.py
-RUN chmod +x /etc/cron.d/monitorjob
-RUN crontab /etc/cron.d/monitorjob
+RUN chmod +x ./scrapper.py
+RUN chmod +x /etc/cron.d/cronjob
+RUN crontab /etc/cron.d/cronjob
 
-CMD ["python3", "/monitor/monitor.py"]
+CMD ["cron", "-f"]
