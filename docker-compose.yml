@@ -13,9 +13,9 @@ services:
       - data:/var/lib/postgresql
   scrapper:
     build:
-      dockerfile: ./scrapper/Dockerfile
-    # env_file: .env
+      dockerfile: scrapper/Dockerfile
     environment:
+      SCHEDULE: 11:00
       CITY: SAO PAULO
       DB_CONNECTION_STRING: postgres://postgres:postgrespw@postgres:5432
       SERVICE: weather.com
@@ -24,10 +24,18 @@ services:
       - postgres
   monitor:
     build:
-      dockerfile: ./monitor/Dockerfile
+      dockerfile: monitor/Dockerfile
     environment:
+      SCHEDULE: 10:00
+      SENDER_EMAIL: weather.monitor@outlook.com
+      EMAIL_PASSWORD: weather.M0N1T0R
+      RECEIVER_EMAIL: decarv.henrique@gmail.com
+      SMTP_SERVER: smtp-mail.outlook.com
+      SMTP_SERVER_PORT: 587
       DB_CONNECTION_STRING: postgres://postgres:postgrespw@postgres:5432
       POSTGRES_PASSWORD: postgrespw
+      TEMPERATURE_MIN: 10
+      TEMPERATURE_MAX: 20
+      PRECIPITATION_PROBABILITY_MIN: 50
     depends_on:
       - postgres
-

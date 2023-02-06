@@ -19,12 +19,13 @@ class WeatherScrapper:
         )
         
         logging.info("WeatherScrapper started.")
-        
+
         self.DEFAULT_FALLBACK_DATE = datetime.datetime(2022, 1, 1)
         self.REQUEST_MAX_RETRIES = 5
         self.REQUEST_WAIT_TIME = 10 # in seconds
 
         logging.info("Loading configuration data.")
+        logging.info(kwargs)
         self.load_configuration_data(kwargs)
         
         logging.info("Connecting to the database.")
@@ -34,7 +35,6 @@ class WeatherScrapper:
 
         logging.info("Job scheduled to run everyday at {}".format(self.schedule))
         schedule.every().day.at(self.schedule).do(self.job)
-        schedule.every(5).seconds.do(self.job)
         
         while True:
             schedule.run_pending()
@@ -186,20 +186,21 @@ class WeatherScrapper:
     
 if __name__ == "__main__":
 
-    WeatherScrapper(
-        place_id=CITY_IDS["SAO PAULO"],
-        geocode=GEOCODES[CITY_IDS["SAO PAULO"]],
-        service="weather.com",
-        db_connection_string="postgres://postgres:postgrespw@localhost:32768", # TODO
-        post_request=POST_REQUEST,
-        schedule="10:30"
-        )
-
+    # Run locally for debugging:
     # WeatherScrapper(
-    #     schedule=os.getenv("SCHEDULE"),
-    #     place_id=CITY_IDS[os.getenv("CITY")],
-    #     geocode=GEOCODES[CITY_IDS[os.getenv("CITY")]],
-    #     service=os.getenv("SERVICE"),
-    #     db_connection_string=os.getenv("DB_CONNECTION_STRING"), # TODO
+    #     place_id=CITY_IDS["SAO PAULO"],
+    #     geocode=GEOCODES[CITY_IDS["SAO PAULO"]],
+    #     service="weather.com",
+    #     db_connection_string="postgres://postgres:postgrespw@postgres:5432", # TODO
     #     post_request=POST_REQUEST,
+    #     schedule="10:30"
     #     )
+
+     WeatherScrapper(
+         schedule=os.getenv("SCHEDULE"),
+         place_id=CITY_IDS[os.getenv("CITY")],
+         geocode=GEOCODES[CITY_IDS[os.getenv("CITY")]],
+         service=os.getenv("SERVICE"),
+         db_connection_string=os.getenv("DB_CONNECTION_STRING"), # TODO
+         post_request=POST_REQUEST,
+         )

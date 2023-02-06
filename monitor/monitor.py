@@ -21,13 +21,13 @@ class WeatherMonitor():
         self.DEFAULT_FALLBACK_DATE = datetime.datetime(2022,1,1)
 
         logging.info("Loading configuration data.")
+        logging.info(kwargs)
         self.load_configuration_data(kwargs)
 
         logging.info("Connecting to the database.")
         self.conn, self.cursor = utils.db.connect(self.connection_string)
         logging.info("Job scheduled to run everyday at {}".format(self.schedule))
         schedule.every().day.at(self.schedule).do(self.job)
-        schedule.every(1).minutes.do(self.job)
 
         while True:
             schedule.run_pending()
@@ -70,7 +70,7 @@ class WeatherMonitor():
         # DO NOT change the first line of email_body
         email_body = "From: {}\r\n\
                         To: {}\r\n\
-                   Subject: {}\r\n\\r\n".format(self.sender_email, 
+                   Subject: {}\r\n\r\n".format(self.sender_email, 
                                             self.receiver_email, 
                                             "Monitoramento do Tempo")
 
@@ -83,33 +83,26 @@ class WeatherMonitor():
         else:
             email_body += "\n~ * ~ Sem resultados ~ * ~"
 
-        with smtplib.SMTP(self.smtp_server, self.smtp_server_port) as server:
-            server.starttls()
-            server.login(self.sender_email, self.email_password)
-            server.sendmail(self.sender_email, self.receiver_email, email_body)
-            logging.info("Email sent.")
+        try:
+            with smtplib.SMTP(self.smtp_server, self.smtp_server_port) as server:
+                server.starttls()
+                server.login(self.sender_email, self.email_password)
+                server.sendmail(self.sender_email, self.receiver_email, email_body)
+                logging.info("Email sent.")
+        except Exception as error:
+            logging.error(f"Error found while trying to send an email: {error}")
 
 
 if __name__ == '__main__':
     WeatherMonitor(
-        schedule="10:00",
-        temperature_min=15,
-        temperature_max=20,
-        precipitation_probability_min=50,
-        sender_email="weather.monitor@outlook.com",
-        receiver_email="decarv.henrique@gmail.com",
-        email_password="weather.M0N1T0R",
-        db_connection_string="postgres://postgres:postgrespw@localhost:32768",
-        smtp_server="smtp-mail.outlook.com",
-        smtp_server_port=587,
-        # sender_email=os.getenv("SENDER_EMAIL"),
-        # sender_email=os.getenv("SENDER_EMAIL"),
-        # email_password=os.getenv("EMAIL_PASSWORD"),
-        # receiver_email=os.getenv("RECEIVER_EMAIL"),
-        # smtp_server=os.getenv("SMTP_SERVER"), 
-        # smtp_server_port=int(os.getenv("SMTP_SERVER_PORT")),
-        # db_connection_string=os.getevn("DB_CONNECTION_STRING"),
-        # temperature_min=int(os.getenv("TEMPERATURE_MIN")),
-        # temperature_max=int(os.getenv("TEMPERATURE_MAX")),
-        # precipitation_probability_min=int(os.getenv("PRECIPITATION_PROBABILITY_MIN")),
+        schedule=os.getenv("SCHEDULE"),
+        sender_email=os.getenv("SENDER_EMAIL"),
+        email_password=os.getenv("EMAIL_PASSWORD"),
+        receiver_email=os.getenv("RECEIVER_EMAIL"),
+        smtp_server=os.getenv("SMTP_SERVER"), 
+        smtp_server_port=int(os.getenv("SMTP_SERVER_PORT")),
+        db_connection_string=os.getenv("DB_CONNECTION_STRING"),
+        temperature_min=int(os.getenv("TEMPERATURE_MIN")),
+        temperature_max=int(os.getenv("TEMPERATURE_MAX")),
+        precipitation_probability_min=int(os.getenv("PRECIPITATION_PROBABILITY_MIN")),
     )
