@@ -28,7 +28,7 @@ As configurações que podem ser realizadas no monitor são:
       EMAIL_PASSWORD: weather.M0N1T0R
       RECEIVER_EMAIL: decarv.henrique@gmail.com
       SMTP_SERVER: smtp-mail.outlook.com
-      SMTP_SERVER\_PORT: 587
+      SMTP_SERVER_PORT: 587
       DB_CONNECTION_STRING: postgres://postgres:postgrespw@postgres:5432
       POSTGRES_PASSWORD: postgrespw
       TEMPERATURE_MIN: 10
